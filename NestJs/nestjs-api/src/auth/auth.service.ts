@@ -6,17 +6,30 @@ import * as argon from "argon2"
 @Injectable({})
 export class AuthService {
     constructor(private prisma: PrismaService) { }
-    login() {
-        return { msg: 'I am in login' }
+    async login(dto: AuthDto) {
+
+        const user = await this.prisma.user.findUnique({
+            where:{
+                email: dto.email
+            }
+        })
+
+        if(!user) throw new ForbiddenException("Credential Error")
+
+        const passMathces = await argon.verify(user.hash,dto.password)
+        if(!passMathces) throw new ForbiddenException("Credential Error")
+        
+        delete user.hash
+
+        return user
+      
     }
 
     async signUp(dto: AuthDto) {
 
         const hash = await argon.hash(dto.password);
-
         try {
-
-
+            console.log("datt", dto)
             const user = await this.prisma.user.create({
                 data: {
                     email: dto.email, hash: hash, lastName: "lol",
@@ -28,7 +41,6 @@ export class AuthService {
                 // }
             }
             )
-
             delete user.hash
             return user
         }
